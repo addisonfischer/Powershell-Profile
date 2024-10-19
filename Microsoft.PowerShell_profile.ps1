@@ -1,12 +1,3 @@
-$sourcePath = .\Microsoft.PowerShell_profile.ps1
-$destinationPath = ~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1
-
-if (-Not (Test-Path -Path $destinationPath))
-{
-    Copy-Item -Path $sourcePath -Destination $destinationPath
-    Write-Host "File copied to $destinationPath."
-}
-
 if (-not (Get-Module -ListAvailable -Name Terminal-Icons))
 {
     Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck

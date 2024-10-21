@@ -99,24 +99,43 @@ $adminSuffix = if ($isAdmin)
 $Host.UI.RawUI.WindowTitle = "PowerShell {0}$adminSuffix" -f $PSVersionTable.PSVersion.ToString()
 
 #ohmyposh setup
-Copy-Item -Path .\termTheme.json -Destination ~\
+#Copy-Item -Path .\termTheme.json -Destination ~\
 Invoke-Expression (oh-my-posh --init --shell pwsh --config ~/termTheme.json)
 
-try
+# Check if Chocolatey is installed
+if (-not (Get-Command choco -ErrorAction SilentlyContinue))
 {
-    Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-} catch
+    try
+    {
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        Write-Host "Chocolatey installed successfully."
+    } catch
+    {
+        Write-Error "Failed to install Chocolatey. Error: $_"
+    }
+} else
 {
-    Write-Error "Failed to install Chocolatey. Error: $_"
+    Write-Host "Chocolatey is already installed. Skipping installation."
 }
-try
+
+# Check if zoxide is installed
+if (-not (Get-Command zoxide -ErrorAction SilentlyContinue))
 {
-    winget install -e --id ajeetdsouza.zoxide
-    Write-Host "zoxide installed successfully."
-} catch
+    try
+    {
+        winget install -e --id ajeetdsouza.zoxide
+        Write-Host "zoxide installed successfully."
+    } catch
+    {
+        Write-Error "Failed to install zoxide. Error: $_"
+    }
+} else
 {
-    Write-Error "Failed to install zoxide. Error: $_"
+    Write-Host "zoxide is already installed. Skipping installation."
 }
+
 
 #Directories
 $rust = "$HOME\Desktop\My Files\Rust"

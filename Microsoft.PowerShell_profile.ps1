@@ -1,28 +1,43 @@
+# Set up for terminal icons and other visual configurations
+$ProgressPreference = 'SilentlyContinue'
+
+# Check for and install Terminal-Icons module if needed
 if (-not (Get-Module -ListAvailable -Name Terminal-Icons))
 {
     Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
 }
 Import-Module -Name Terminal-Icons
 
+# Import Z module for directory navigation
+if (-not (Get-Module -ListAvailable -Name Z))
+{
+    Install-Module -Name Z -Scope CurrentUser -Force -SkipPublisherCheck
+}
+Import-Module -Name Z
+
+# Check connection to GitHub
 $canConnectToGitHub = Test-NetConnection -ComputerName github.com -InformationLevel Quiet
 
+# -------------------------
+# Functions for Installation
+# -------------------------
+
+# Install FiraCode Nerd Font if not installed
 function Install-Font
 {
-    $fontNames = @('Hack Nerd Font', 'Hack Nerd Font Mono', 'Hack Nerd Font Propo')
-    $fontUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/Hack.zip'
+    $fontNames = @('FiraCode Nerd Font')
+    $fontUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/FiraCode.zip'
 
     $installedFonts = (New-Object System.Drawing.Text.InstalledFontCollection).Families.Name
     $fontsMissing = $fontNames | Where-Object { $_ -notin $installedFonts }
 
     if ($fontsMissing.Count -gt 0)
     {
-        $zipPath = "$env:TEMP\Hack.zip"
+        $zipPath = "$env:TEMP\FireCode.zip"
         $extractPath = "$env:TEMP\HackFonts"
 
         Invoke-WebRequest -Uri $fontUrl -OutFile $zipPath
-
         New-Item -ItemType Directory -Path $extractPath -Force
-
         Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
 
         Get-ChildItem -Path "$extractPath\*" -Filter "*.ttf" | ForEach-Object {
@@ -42,9 +57,11 @@ function Install-Font
     }
 }
 
-Install-Font
+# -------------------------
+# PowerShell Update Function
+# -------------------------
 
-
+# Update PowerShell if newer version available
 function Update-PowerShell
 {
     if (-not $global:canConnectToGitHub)
@@ -56,41 +73,45 @@ function Update-PowerShell
     try
     {
         Write-Host "Checking for PowerShell updates..." -ForegroundColor Cyan
-        $updateNeeded = $false
-        $currentVersion = $PSVersionTable.PSVersion.ToString()
+        $currentVersion = [Version]$PSVersionTable.PSVersion
         $gitHubApiUrl = "https://api.github.com/repos/PowerShell/PowerShell/releases/latest"
         $latestReleaseInfo = Invoke-RestMethod -Uri $gitHubApiUrl
-        $latestVersion = $latestReleaseInfo.tag_name.Trim('v')
+        $latestVersion = [Version]$latestReleaseInfo.tag_name.Trim('v')
+
+        # Compare the current version and latest version
         if ($currentVersion -lt $latestVersion)
         {
-            $updateNeeded = $true
-        }
-
-        if ($updateNeeded)
-        {
-            Write-Host "Updating PowerShell..." -ForegroundColor Yellow
+            Write-Host "Updating PowerShell from $currentVersion to $latestVersion..." -ForegroundColor Yellow
             winget install --id Microsoft.Powershell --source winget --accept-package-agreements --accept-source-agreements
-            Write-Host "PowerShell has been updated. Please restart your shell to reflect changes" -ForegroundColor Magenta
+            Write-Host "PowerShell has been updated. Please restart your shell to reflect changes." -ForegroundColor Magenta
         } else
         {
-            Write-Host "Your PowerShell is up to date." -ForegroundColor Green
+            Write-Host "Your PowerShell version ($currentVersion) is up to date." -ForegroundColor Green
         }
     } catch
     {
         Write-Error "Failed to update PowerShell. Error: $_"
     }
 }
-Update-PowerShell
 
+# -------------------------
+# Set Admin Prompt
+# -------------------------
+
+# Check for Admin rights and set prompt
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
 function prompt
 {
     if ($isAdmin)
-    { "[" + (Get-Location) + "] # " 
+    {
+        "[" + (Get-Location) + "] # "
     } else
-    { "[" + (Get-Location) + "] $ " 
+    {
+        "[" + (Get-Location) + "] $ "
     }
 }
+
 $adminSuffix = if ($isAdmin)
 { " [ADMIN]" 
 } else
@@ -98,67 +119,75 @@ $adminSuffix = if ($isAdmin)
 }
 $Host.UI.RawUI.WindowTitle = "PowerShell {0}$adminSuffix" -f $PSVersionTable.PSVersion.ToString()
 
-#ohmyposh setup
-#Copy-Item -Path .\termTheme.json -Destination ~\
+# -------------------------
+# oh-my-posh Setup
+# -------------------------
+
+# Set up oh-my-posh theme
 Invoke-Expression (oh-my-posh --init --shell pwsh --config ~/termTheme.json)
 
-# Check if Chocolatey is installed
-if (-not (Get-Command choco -ErrorAction SilentlyContinue))
-{
-    try
-    {
-        Set-ExecutionPolicy Bypass -Scope Process -Force
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-        Write-Host "Chocolatey installed successfully."
-    } catch
-    {
-        Write-Error "Failed to install Chocolatey. Error: $_"
-    }
-} else
-{
-    Write-Host "Chocolatey is already installed. Skipping installation."
-}
+# -------------------------
+# Paths for Various Projects
+# -------------------------
 
-# Check if zoxide is installed
-if (-not (Get-Command zoxide -ErrorAction SilentlyContinue))
-{
-    try
-    {
-        winget install -e --id ajeetdsouza.zoxide
-        Write-Host "zoxide installed successfully."
-    } catch
-    {
-        Write-Error "Failed to install zoxide. Error: $_"
-    }
-} else
-{
-    Write-Host "zoxide is already installed. Skipping installation."
-}
-
-
-#Directories
+# Define important directories
 $rust = "$HOME\Desktop\My Files\Rust"
 $repos = "$HOME\source\repos"
 $work = "$HOME\Desktop\Armanino"
 $myfiles = "$HOME\Desktop\My Files"
 $desktop = "$HOME\Desktop"
 
-#Files
+# Files of interest
 $settings =  "$HOME\AppData\Local\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
 $nvim = "$HOME\AppData\Local\nvim\init.lua"
 $wez = "$HOME\.wezterm.lua"
+$glaze = "$HOME\.glzr\glazewm\config.yaml"
+
+# -------------------------
+# Environment Configuration
+# -------------------------
 
 # Add rust-analyzer to PATH
 $env:PATH += ";C:\Users\Addison.Fischer\.cargo\bin"
 
-#progz I use
+# Programs I use
 $env:Path += ";C:\Users\Addison.Fischer\Desktop\My Files\CodemerxDecompilex64"
 
-#functions
+# -------------------------
+# Custom Functions
+# -------------------------
+
+# System Info Function
+function sysinfo
+{
+    Get-ComputerInfo 
+}
+
+# Networking Functions
+function flushdns
+{
+    Clear-DnsClientCache
+    Write-Host "DNS has been flushed"
+}
+
+function weather ($command)
+{
+    irm "https://wttr.in/$command" 
+}
+
+function text
+{
+    & explorer.exe https://messages.google.com/web/u/0/conversations/8
+}
+
 function whereis ($command)
 {
     Get-Command -Name $command -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path -ErrorAction SilentlyContinue
+}
+
+function qr ($string)
+{
+    irm "qrenco.de/$string"
 }
 
 function rust
@@ -191,10 +220,97 @@ function home
     Set-Location $home
 }
 
-Import-Module PSReadLine
-Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
-Set-PSReadLineOption -PredictionViewStyle ListView
-Import-Module -Name PowerPlatformCLIAutoComplete
+function postman
+{
+    & "C:\Users\Addison.Fischer\AppData\Local\Postman\postman.exe"
+}
+
+function npro
+{
+    nvim.exe $nvim 
+}
+
+function profile
+{
+    nvim.exe $profile 
+}
+
+function netlist
+{
+    param (
+        [string]$interfaceIPPrefix = "192.168.69."
+    )
+
+    $foundInterface = $false
+    arp -a | ForEach-Object {
+        if ($_ -match "^Interface: $interfaceIPPrefix.*")
+        {
+            $foundInterface = $true
+            Write-Output $_
+        } elseif ($_ -match "^Interface:")
+        {
+            $foundInterface = $false
+        } elseif ($foundInterface -and ($_ -match "^\s*($interfaceIPPrefix[0-9]+)\s+([0-9A-F-]+)"))
+        {
+            $ipAddress = $matches[1]
+            $macAddress = $matches[2]
+            $hostname = (Test-Connection -ComputerName $ipAddress -Count 1 -ErrorAction SilentlyContinue).Address.HostName
+            [PSCustomObject]@{
+                IPAddress = $ipAddress
+                MACAddress = $macAddress
+                Hostname = $hostname
+            }
+        }
+    } | Format-Table -AutoSize
+}
+
+# Apple Device Detection (Using MAC addresses)
+function apples
+{
+    $url = "https://www.netify.ai/resources/macs/brands/apple"
+    try
+    {
+        $pageContent = Invoke-WebRequest -Uri $url -UseBasicParsing
+        $appleOuis = [regex]::Matches($pageContent.Content, "(?:[0-9A-Fa-f]{2}:){2}[0-9A-Fa-f]{2}") |
+            ForEach-Object { $_.Value.ToUpper() } | Sort-Object -Unique
+    } catch
+    {
+        Write-Output "Failed to fetch MAC prefix list from the website."
+        return
+    }
+
+    arp -a | ForEach-Object {
+        if ($_ -match "^\s*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([0-9A-F-]+)")
+        {
+            $ipAddress = $matches[1]
+            $macAddress = $matches[2].ToUpper() -replace "-", ":"
+            
+            $isAppleDevice = $appleOuis | ForEach-Object { $macAddress.StartsWith($_) } | Where-Object { $_ -eq $true }
+            
+            if ($isAppleDevice)
+            {
+                $hostname = ""
+                try
+                {
+                    $hostname = (Resolve-DnsName -Name $ipAddress -ErrorAction Stop).NameHost
+                } catch
+                {
+                    $hostname = "Not resolved"
+                }
+                [PSCustomObject]@{
+                    IPAddress = $ipAddress
+                    MACAddress = $macAddress
+                    Hostname = $hostname
+                    DeviceType = "Apple"
+                }
+            }
+        }
+    } | Format-Table -AutoSize
+}
+
+# -------------------------
+# Miscellaneous Utilities
+# -------------------------
 
 function wcurl
 {
@@ -236,6 +352,7 @@ function cmt
 function touch($file)
 { "" | Out-File $file -Encoding ASCII 
 }
+
 function ff($name)
 {
     Get-ChildItem -recurse -filter "*${name}*" -ErrorAction SilentlyContinue | ForEach-Object {
@@ -265,12 +382,15 @@ function parsec
 {
     & "C:\Program Files\Parsec\parsecd.exe"
 }
-
 function unzip ($file)
 {
     Write-Output("Extracting", $file, "to", $pwd)
     $fullFile = Get-ChildItem -Path $pwd -Filter $file | ForEach-Object { $_.FullName }
     Expand-Archive -Path $fullFile -DestinationPath $pwd
+}
+
+function touch($file)
+{ "" | Out-File $file -Encoding ASCII 
 }
 
 function df
@@ -283,30 +403,38 @@ function mkcd
 }
 
 function la
-{ Get-ChildItem -Path . -Force | Format-Table -AutoSize 
+{
+    Get-ChildItem -Path . -Force | Format-Table -AutoSize 
 }
+
 function ll
-{ Get-ChildItem -Path . -Force -Hidden | Format-Table -AutoSize 
+{
+    Get-ChildItem -Path . -Force -Hidden | Format-Table -AutoSize 
 }
 
 function gs
-{ git status 
+{
+    git status 
 }
 
 function ga
-{ git add . 
+{
+    git add . 
 }
 
 function gc
-{ param($m) git commit -m "$m" 
+{
+    param($m) git commit -m "$m" 
 }
 
 function gp
-{ git push 
+{
+    git push 
 }
 
 function gcl
-{ git clone "$args" 
+{
+    git clone "$args" 
 }
 
 function gcom
@@ -314,16 +442,12 @@ function gcom
     git add .
     git commit -m "$args"
 }
+
 function lazyg
 {
     git add .
     git commit -m "$args"
     git push
-}
-
-# Quick Access to System Information
-function sysinfo
-{ Get-ComputerInfo 
 }
 
 # Networking Utilities
@@ -340,6 +464,18 @@ function cpy
 function pst
 { Get-Clipboard 
 }
+
+# -------------------------
+# Final Setup
+# -------------------------
+
+# Import PSReadLine and configure
+Import-Module PSReadLine
+Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+Set-PSReadLineOption -PredictionViewStyle ListView
+
+# Networking and completion
+Import-Module -Name PowerPlatformCLIAutoComplete
 
 Set-PSReadLineOption -Colors @{
     Command = 'Yellow'
@@ -359,7 +495,7 @@ Set-PSReadLineOption @PSROptions
 Set-PSReadLineKeyHandler -Chord 'Ctrl+f' -Function ForwardWord
 Set-PSReadLineKeyHandler -Chord 'Enter' -Function ValidateAndAcceptLine
 
-
+# Function for argument completion
 $scriptblock = {
     param($wordToComplete, $commandAst, $cursorPosition)
     dotnet complete --position $cursorPosition $commandAst.ToString() |
@@ -369,6 +505,9 @@ $scriptblock = {
 }
 Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock $scriptblock
 
-Invoke-Expression (& { (zoxide init powershell | Out-String) })
+# Import the Z module for directory navigation
+Import-Module z
 
+# Add Python path to environment
+$env:Path += ";C:\Python312\Scripts"
 Clear-Host

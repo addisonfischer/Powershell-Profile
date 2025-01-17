@@ -164,6 +164,21 @@ function sysinfo
 }
 
 # Networking Functions
+function resetnetwork
+{
+
+    ipconfig /release | Out-Null
+    Write-Host "Network has been released" -foregroundcolor red
+    ipconfig /flushdns | Out-Null
+    Clear-DnsClientCache | Out-Null
+    Write-Host "DNS has been cleared" -foregroundcolor yellow
+    ipconfig /renew | Out-Null
+    Write-Host "Network has been reset" -foregroundcolor green
+    Write-Host "" -foregroundcolor green
+    Write-Host "" -foregroundcolor green
+}
+
+# Networking Functions
 function flushdns
 {
     Clear-DnsClientCache
@@ -178,6 +193,11 @@ function weather ($command)
 function text
 {
     & explorer.exe https://messages.google.com/web/u/0/conversations/8
+}
+ 
+function def ($string)
+{
+    wikit "$string"
 }
 
 function whereis ($command)
@@ -214,6 +234,13 @@ function desktop
 {
     Set-Location $desktop
 } 
+
+function fcd 
+{
+    $path = fzf
+    echo $path
+    Set-Location $path\.. 
+}
 
 function home
 {
@@ -510,4 +537,8 @@ Import-Module z
 
 # Add Python path to environment
 $env:Path += ";C:\Python312\Scripts"
+$env:Path += ";C:\Program Files\GitHub CLI"
 Clear-Host
+
+Clear-Host
+

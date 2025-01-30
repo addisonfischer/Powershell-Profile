@@ -538,7 +538,5 @@ Import-Module z
 # Add Python path to environment
 $env:Path += ";C:\Python312\Scripts"
 $env:Path += ";C:\Program Files\GitHub CLI"
-Clear-Host
 
 Clear-Host
-
